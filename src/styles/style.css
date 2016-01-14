@@ -1,0 +1,87 @@
+* {
+    box-sizing: border-box;
+}
+
+html {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    background-color: #30363C;
+    background-image: url(../images/bg-highlight.png), url(../images/bg.jpg);
+    background-repeat: repeat-x, repeat;
+    background-position: 50% 0, 50% 0;
+    font-size: 14px;
+}
+
+header {
+    width: 100%;
+    height: 30px;
+}
+
+.container {
+    position: relative;
+
+    width: 884px;
+    margin-top: 100px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.main {
+    width: 884px;
+    padding: 27px 30px 57px;
+}
+
+#main_canvas {
+    border: solid 12px rgba(255, 255, 255, 0.9);
+    -webkit-box-shadow: #000 0 5px 32px;
+    -moz-box-shadow: #000 0 5px 32px;
+    box-shadow: #000 0 5px 32px;
+}
+
+.sidebar {
+    position: absolute;
+    top: 0;
+    right: -266px;
+
+    width: 256px;
+}
+
+.tool {
+    margin-top: 20px;
+}
+
+.history-container {
+    position: absolute;
+    top: 0;
+    left: -160px;
+
+    overflow: hidden;
+
+    width: 150px;
+
+    font-size: 0.8rem;
+}
+
+.history-list {
+    height: 50px;
+    position: relative;
+}
+
+.history-time {
+    font-size: 50%;
+    position: absolute;
+    top: 20px;
+    left: 0;
+}
+
+.panel {
+    height: 530px;
+    color: #EEE;
+    border: solid rgba(255, 255, 255, .12);
+    border-width: 0 0 1px 0;
+    border-radius: 6px;
+    background: rgba(27, 30, 33, .5);
+}
