@@ -65,16 +65,24 @@ header {
     font-size: 0.8rem;
 }
 
+.history-container ul {
+    padding:0;
+}
+
 .history-list {
     height: 50px;
     position: relative;
+    cursor: pointer;
+    background: rgba(27, 30, 33, .7);
+    padding-left:5px;
+    margin:5px 0;
 }
 
 .history-time {
     font-size: 50%;
     position: absolute;
     top: 20px;
-    left: 0;
+    left: 5px;
 }
 
 .panel {

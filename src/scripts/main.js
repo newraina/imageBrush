@@ -19,6 +19,8 @@ demoImg.onload = function () {
     ctx.drawImage(demoImg, 0, 0, canvasWidth, canvasHeight);
     pixels = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
 
+    historyRecord.saveOrigin(canvas);
+
     histogram(pixels, histogramCanvas);
 };
 
@@ -27,8 +29,9 @@ demoImg.onload = function () {
  *           历史纪录
  * *****************************/
 var historyRecord = function () {
-    var records = [];
+    var records   = [];
     var renderContainer;
+    var maxLength = 10;
 
     // 用于保存原始图像
     var originalRecord = function () {
@@ -58,7 +61,7 @@ var historyRecord = function () {
 
         records.push(tempRecord);
 
-        if (records.length > 10) {
+        if (records.length > maxLength) {
             records.shift();
         }
     }
@@ -121,6 +124,13 @@ var historyRecord = function () {
         ctx.drawImage(originalRecord.canvas, 0, 0);
     }
 
+    // 允许修改历史纪录的最大长度
+    function changeMaxLength(num) {
+        if (num > 0) {
+            maxLength = num;
+        }
+    }
+
     return {
         add             : add,
         remove          : remove,
@@ -128,7 +138,8 @@ var historyRecord = function () {
         setRenderElement: setRenderElement,
         render          : render,
         saveOrigin      : saveOrigin,
-        restoreOrigin   : restoreOrigin
+        restoreOrigin   : restoreOrigin,
+        changeMaxLength : changeMaxLength
     }
 
 }();
@@ -141,7 +152,9 @@ historyRecord.setRenderElement(historyArea);
 var toolArea = container.querySelector('.tool');
 toolArea.addEventListener('click', function (event) {
     if (event.target.className.indexOf('restore') > -1) {
-
+        historyRecord.restoreOrigin(canvas);
+        historyRecord.add('撤销所有修改', canvas);
+        historyRecord.render();
     }
     if (event.target.className.indexOf('color-inverse') > -1) {
         historyRecord.add('反色', canvas);
@@ -202,21 +215,21 @@ function histogram(imgData, canvasElement) {
         var tempValue          = Math.round(value);
         histogramCtx.fillStyle = 'rgba(255, 0, 0, 0.55)';
         histogramCtx.fillRect(index, 100 - tempValue, 1, tempValue);
-        histogramCtx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+        histogramCtx.fillStyle = 'rgba(255, 0, 0, 0.35)';
         histogramCtx.fillRect(index, 100 - tempValue, 1, 1);
     });
     gBrightness.forEach(function (value, index) {
         var tempValue          = Math.round(value);
         histogramCtx.fillStyle = 'rgba(0, 255, 0, 0.55)';
         histogramCtx.fillRect(index, 100 - tempValue, 1, tempValue);
-        histogramCtx.fillStyle = 'rgba(0, 255, 0, 0.7)';
+        histogramCtx.fillStyle = 'rgba(0, 255, 0, 0.35)';
         histogramCtx.fillRect(index, 100 - tempValue, 1, 1);
     });
     bBrightness.forEach(function (value, index) {
         var tempValue          = Math.round(value);
         histogramCtx.fillStyle = 'rgba(0, 0, 255, 0.55)';
         histogramCtx.fillRect(index, 100 - tempValue, 1, tempValue);
-        histogramCtx.fillStyle = 'rgba(0, 0, 255, 0.7)';
+        histogramCtx.fillStyle = 'rgba(0, 0, 255, 0.35)';
         histogramCtx.fillRect(index, 100 - tempValue, 1, 1);
     });
 }
