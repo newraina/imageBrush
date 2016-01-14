@@ -30,6 +30,16 @@ var historyRecord = function () {
     var records = [];
     var renderContainer;
 
+    // 用于保存原始图像
+    var originalRecord = function () {
+        var canvas = document.createElement('canvas');
+        var ctx    = canvas.getContext('2d');
+        return {
+            canvas: canvas,
+            ctx   : ctx
+        }
+    }();
+
     // 添加历史纪录函数
     function add(title, canvasElement) {
         var tempCanvas = document.createElement('canvas');
@@ -94,12 +104,31 @@ var historyRecord = function () {
         renderContainer.innerHTML = content;
     }
 
+    // 将指定的初始化canvas元素保存以备用
+    function saveOrigin(canvasElement) {
+        originalRecord.canvas.width  = canvasElement.width;
+        originalRecord.canvas.height = canvasElement.height;
+        originalRecord.ctx.drawImage(canvasElement, 0, 0);
+    }
+
+    // 将已保存的初始图像恢复到指定的canvas中
+    function restoreOrigin(canvasElement) {
+        var ctx = canvasElement.getContext('2d');
+
+        canvasElement.width  = originalRecord.canvas.width;
+        canvasElement.height = originalRecord.canvas.height;
+
+        ctx.drawImage(originalRecord.canvas, 0, 0);
+    }
+
     return {
         add             : add,
         remove          : remove,
         getRecord       : getRecord,
         setRenderElement: setRenderElement,
-        render          : render
+        render          : render,
+        saveOrigin      : saveOrigin,
+        restoreOrigin   : restoreOrigin
     }
 
 }();
