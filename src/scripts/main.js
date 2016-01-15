@@ -21,12 +21,14 @@ demoImg.onload = function () {
 
     historyRecord.saveOrigin(canvas);
 
-    histogram(pixels, histogramCanvas);
+    histogram.setRenderSource(canvas);
+    histogram.setRenderTarget(histogramCanvas);
+    histogram.render();
 };
 
 
 /******************************
- *           历史纪录
+ *         历史纪录模块
  * *****************************/
 var historyRecord = function () {
     var records   = [];
@@ -146,6 +148,123 @@ var historyRecord = function () {
 
 historyRecord.setRenderElement(historyArea);
 
+
+/******************************
+ *          直方图模块
+ * *****************************/
+var histogram = function () {
+
+    var renderTarget,
+        targetCtx,
+        targetImgData,
+        renderSource,
+        sourceCtx,
+        sourceImgData;
+
+    // 红绿蓝三种颜色各亮度值对应像素数目的计数对象
+    var count   = {};
+    count.red   = new Array(256);
+    count.green = new Array(256);
+    count.blue  = new Array(256);
+    count.rMax  = 0;
+    count.gMax  = 0;
+    count.bMax  = 0;
+
+    // 设置直方图绘制在哪个canvas中
+    function setRenderTarget(canvasElement) {
+        renderTarget        = canvasElement;
+        renderTarget.width  = 256;
+        renderTarget.height = 100;
+    }
+
+    // 设置要绘制哪个canvas的直方图
+    function setRenderSource(canvasElement) {
+        renderSource = canvasElement;
+    }
+
+    function render() {
+        targetCtx     = renderTarget.getContext('2d');
+        sourceCtx     = renderSource.getContext('2d');
+        sourceImgData = sourceCtx.getImageData(0, 0, renderSource.width, renderSource.height);
+
+        // 初始化为零
+        for (var k = 0; k < 256; k++) {
+            count.red[k]   = 0;
+            count.green[k] = 0;
+            count.blue[k]  = 0;
+        }
+        count.rMax = 0;
+        count.gMax = 0;
+        count.bMax = 0;
+
+        var data = sourceImgData.data,
+            len  = data.length;
+
+        for (var i = 0; i < len; i += 4) {
+            count.red[data[i]]++;
+            count.green[data[i + 1]]++;
+            count.blue[data[i + 2]]++;
+        }
+
+        // 找出三个通道各亮度像素数中的最大值
+        for (var j = 0; j < 256; j++) {
+            count.rMax = count.rMax < count.red[j] ? count.red[j] : count.rMax;
+            count.gMax = count.gMax < count.green[j] ? count.green[j] : count.gMax;
+            count.bMax = count.bMax < count.blue[j] ? count.blue[j] : count.bMax;
+        }
+
+        // 归一化
+        for (var m = 0; m < 256; m++) {
+            count.red[m] /= count.rMax / 100;
+            count.green[m] /= count.gMax / 100;
+            count.blue[m] /= count.bMax / 100;
+        }
+
+        // 绘制直方图
+        count.red.forEach(function (value, index) {
+            var tempValue       = Math.round(value);
+            targetCtx.fillStyle = 'rgba(255, 0, 0, 0.55)';
+            targetCtx.fillRect(index, 100 - tempValue, 1, tempValue);
+            targetCtx.fillStyle = 'rgba(255, 0, 0, 0.35)';
+            targetCtx.fillRect(index, 100 - tempValue, 1, 1);
+        });
+        count.green.forEach(function (value, index) {
+            var tempValue       = Math.round(value);
+            targetCtx.fillStyle = 'rgba(0, 255, 0, 0.55)';
+            targetCtx.fillRect(index, 100 - tempValue, 1, tempValue);
+            targetCtx.fillStyle = 'rgba(0, 255, 0, 0.35)';
+            targetCtx.fillRect(index, 100 - tempValue, 1, 1);
+        });
+        count.blue.forEach(function (value, index) {
+            var tempValue       = Math.round(value);
+            targetCtx.fillStyle = 'rgba(0, 0, 255, 0.55)';
+            targetCtx.fillRect(index, 100 - tempValue, 1, tempValue);
+            targetCtx.fillStyle = 'rgba(0, 0, 255, 0.35)';
+            targetCtx.fillRect(index, 100 - tempValue, 1, 1);
+        });
+    }
+
+    return {
+        setRenderTarget: setRenderTarget,
+        setRenderSource: setRenderSource,
+        render         : render
+    }
+}();
+
+/******************************
+ *          图像处理模块
+ * *****************************/
+
+//反色处理
+function colorInverse(imgData) {
+    var data = imgData.data;
+    for (var i = 0, len = data.length; i < len; i += 4) {
+        for (var j = 0; j < 3; j++) {
+            data[i + j] = 255 - data[i + j];
+        }
+    }
+}
+
 /******************************
  *          事件绑定
  * *****************************/
@@ -164,72 +283,3 @@ toolArea.addEventListener('click', function (event) {
     }
 });
 
-/******************************
- *            图像处理
- * *****************************/
-
-//反色处理
-function colorInverse(imgData) {
-    var data = imgData.data;
-    for (var i = 0, len = data.length; i < len; i += 4) {
-        for (var j = 0; j < 3; j++) {
-            data[i + j] = 255 - data[i + j];
-        }
-    }
-}
-
-// 生成直方图
-function histogram(imgData, canvasElement) {
-    var data        = imgData.data,
-        len         = data.length,
-        // 红绿蓝三种颜色各亮度值对应像素数目的计数数组
-        rBrightness = new Array(256),
-        gBrightness = new Array(256),
-        bBrightness = new Array(256);
-
-    // 初始化为零
-    for (var k = 0; k < 256; k++) {
-        rBrightness[k] = 0;
-        gBrightness[k] = 0;
-        bBrightness[k] = 0;
-    }
-
-    for (var i = 0; i < len; i += 4) {
-        rBrightness[data[i]]++;
-        gBrightness[data[i + 1]]++;
-        bBrightness[data[i + 2]]++;
-
-    }
-
-    // 归一化
-    for (var j = 0; j < 256; j++) {
-        rBrightness[j] /= len / 4 / 5000;
-        gBrightness[j] /= len / 4 / 5000;
-        bBrightness[j] /= len / 4 / 5000;
-    }
-
-    var histogramCtx = canvasElement.getContext('2d');
-
-    // 绘制直方图
-    rBrightness.forEach(function (value, index) {
-        var tempValue          = Math.round(value);
-        histogramCtx.fillStyle = 'rgba(255, 0, 0, 0.55)';
-        histogramCtx.fillRect(index, 100 - tempValue, 1, tempValue);
-        histogramCtx.fillStyle = 'rgba(255, 0, 0, 0.35)';
-        histogramCtx.fillRect(index, 100 - tempValue, 1, 1);
-    });
-    gBrightness.forEach(function (value, index) {
-        var tempValue          = Math.round(value);
-        histogramCtx.fillStyle = 'rgba(0, 255, 0, 0.55)';
-        histogramCtx.fillRect(index, 100 - tempValue, 1, tempValue);
-        histogramCtx.fillStyle = 'rgba(0, 255, 0, 0.35)';
-        histogramCtx.fillRect(index, 100 - tempValue, 1, 1);
-    });
-    bBrightness.forEach(function (value, index) {
-        var tempValue          = Math.round(value);
-        histogramCtx.fillStyle = 'rgba(0, 0, 255, 0.55)';
-        histogramCtx.fillRect(index, 100 - tempValue, 1, tempValue);
-        histogramCtx.fillStyle = 'rgba(0, 0, 255, 0.35)';
-        histogramCtx.fillRect(index, 100 - tempValue, 1, 1);
-    });
-}
