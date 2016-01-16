@@ -352,7 +352,12 @@ var adjust = function () {
                 share.setOperator(id);
             }
 
-            var temp = tool.canvasHelper(share.getCurrentCanvas());
+            var canvas = share.getCurrentCanvas();
+
+            historyRecord.add('撤销所有修改', canvas);
+            historyRecord.render();
+
+            var temp = tool.canvasHelper(canvas);
             temp.applyTo(canvasElement);
         }
 
@@ -496,8 +501,6 @@ window.onload = function () {
     toolArea.addEventListener('click', function (event) {
         if (event.target.className.indexOf('restore') > -1) {
             adjust.origin.restore(mainCanvas);
-            historyRecord.add('撤销所有修改', mainCanvas);
-            historyRecord.render();
 
 
         }
