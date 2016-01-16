@@ -352,12 +352,12 @@ var adjust = function () {
                 share.setOperator(id);
             }
 
-            var canvas = share.getCurrentCanvas();
+            var currentCanvas = share.getCurrentCanvas();
 
-            historyRecord.add('撤销所有修改', canvas);
+            historyRecord.add('撤销所有修改', currentCanvas);
             historyRecord.render();
 
-            var temp = tool.canvasHelper(canvas);
+            var temp = tool.canvasHelper(currentCanvas);
             temp.applyTo(canvasElement);
         }
 
