@@ -1,38 +1,6 @@
 "use strict";
 
 /******************************
- *           主逻辑
- * *****************************/
-var container       = document.querySelector('.container'),
-    mainCanvas      = container.querySelector('#main_canvas'),
-    histogramCanvas = container.querySelector('#histogram_canvas'),
-    historyArea     = container.querySelector('.history-container'),
-    mainCtx         = mainCanvas.getContext('2d'),
-    pixels,
-    canvasWidth     = 800,
-    canvasHeight    = 449,
-    demoImg         = new Image();
-
-demoImg.src = './src/images/demo.jpg';
-
-demoImg.onload = function () {
-    mainCtx.drawImage(demoImg, 0, 0, canvasWidth, canvasHeight);
-    pixels = mainCtx.getImageData(0, 0, canvasWidth, canvasHeight);
-
-    // 设置历史纪录模块
-    // 保存原始图像 便于还原操作
-    historyRecord.setRenderElement(historyArea);
-    historyRecord.saveOrigin(mainCanvas);
-
-    // 设置直方图模块
-    // 绘制直方图
-    histogram.setRenderSource(mainCanvas);
-    histogram.setRenderTarget(histogramCanvas);
-    histogram.render();
-};
-
-
-/******************************
  *         辅助工具模块
  * *****************************/
 var tool = function () {
@@ -64,30 +32,68 @@ var tool = function () {
 
         // 通过将图像数据绘制在canvas上达到保存图像数据的目的
         function save() {
-            tempCtx.putImageData(newImageData, width, height);
+            tempCtx.putImageData(newImageData, 0, 0);
+        }
+
+        // 将指定canvas内容绘制在新创建的canvas上
+        function copyFrom(canvasElement) {
+            tempCtx.drawImage(canvasElement, 0, 0, canvasElement.width, canvasElement.height);
         }
 
         return {
-            canvas      : tempCanvas,
-            ctx         : tempCtx,
-            newImageData: newImageData,
-            newData     : newData,
-            length      : length,
-            save        : save
+            canvas   : tempCanvas,
+            ctx      : tempCtx,
+            imageData: newImageData,
+            data     : newData,
+            length   : length,
+            save     : save,
+            copyFrom : copyFrom
         }
     }
 
-    // 输入canvas，返回对象的context ImageData ImageData.data
+    // 输入canvas，返回对应canvas的相关属性和自定义方法
     function canvasHelper(sourceCanvas) {
         var ctx       = sourceCanvas.getContext('2d');
         var imageData = ctx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
         var data      = imageData.data;
+        var length    = data.length;
 
-        return {
+        // 是否创建了新ImageData对象的标志变量
+        var created  =false;
+
+        var tempHelper = {
+            canvas   : sourceCanvas,
             ctx      : ctx,
             imageData: imageData,
-            data     : data
-        }
+            data     : data,
+            length   : length
+        };
+
+        tempHelper.creat = function () {
+            created = true;
+
+            this.newImageData = this.ctx.createImageData(imageData);
+            return this.newImageData;
+        };
+
+        tempHelper.update = function () {
+            if (created) {
+                this.ctx.putImageData(this.newImageData, 0, 0);
+            } else {
+                this.ctx.putImageData(this.imageData, 0, 0);
+            }
+        };
+
+        tempHelper.applyTo = function (targetCanvas) {
+            var ctx = targetCanvas.getContext('2d');
+            if (created) {
+                ctx.putImageData(this.newImageData, 0, 0);
+            } else {
+                ctx.putImageData(this.imageData, 0, 0);
+            }
+        };
+
+        return tempHelper;
     }
 
     return {
@@ -103,16 +109,6 @@ var historyRecord = function () {
     var records   = [];
     var renderContainer;
     var maxLength = 10;
-
-    // 用于保存原始图像
-    var originalRecord = function () {
-        var canvas = document.createElement('canvas');
-        var ctx    = canvas.getContext('2d');
-        return {
-            canvas: canvas,
-            ctx   : ctx
-        }
-    }();
 
     // 添加历史纪录函数
     function add(title, canvasElement) {
@@ -174,22 +170,6 @@ var historyRecord = function () {
         renderContainer.innerHTML = content;
     }
 
-    // 将指定的初始化canvas元素保存以备用
-    function saveOrigin(canvasElement) {
-        originalRecord.canvas.width  = canvasElement.width;
-        originalRecord.canvas.height = canvasElement.height;
-        originalRecord.ctx.drawImage(canvasElement, 0, 0);
-    }
-
-    // 将已保存的初始图像恢复到指定的canvas中
-    function restoreOrigin(canvasElement) {
-        var ctx = canvasElement.getContext('2d');
-
-        canvasElement.width  = originalRecord.canvas.width;
-        canvasElement.height = originalRecord.canvas.height;
-
-        ctx.drawImage(originalRecord.canvas, 0, 0);
-    }
 
     // 允许修改历史纪录的最大长度
     function changeMaxLength(num) {
@@ -204,8 +184,6 @@ var historyRecord = function () {
         getRecord       : getRecord,
         setRenderElement: setRenderElement,
         render          : render,
-        saveOrigin      : saveOrigin,
-        restoreOrigin   : restoreOrigin,
         changeMaxLength : changeMaxLength
     }
 
@@ -282,9 +260,9 @@ var histogram = function () {
 
         // 归一化
         for (var m = 0; m < 256; m++) {
-            count.red[m] /= count.rMax / 100;
-            count.green[m] /= count.gMax / 100;
-            count.blue[m] /= count.bMax / 100;
+            count.red[m] /= count.rMax / (100 * 0.9);
+            count.green[m] /= count.gMax / (100 * 0.9);
+            count.blue[m] /= count.bMax / (100 * 0.9);
         }
 
         // 绘制直方图
@@ -322,6 +300,67 @@ var histogram = function () {
  *          图像处理模块
  * *****************************/
 var adjust = function () {
+    // 各处理函数共享的对象
+    var share = function () {
+        var current = {};
+
+        current.canvas   = null;
+        current.operator = null;
+
+        function setCurrentCanvas(canvasElement) {
+            var temp = tool.canvasGenerator(canvasElement);
+            temp.copyFrom(canvasElement);
+            current.canvas = temp.canvas;
+        }
+
+        function setOperator(id) {
+            current.operator = id;
+        }
+
+        function getCurrentCanvas() {
+            return current.canvas;
+        }
+
+        function getOperator() {
+            return current.operator;
+        }
+
+        return {
+            setCurrentCanvas: setCurrentCanvas,
+            setOperator     : setOperator,
+            getCurrentCanvas: getCurrentCanvas,
+            getOperator     : getOperator
+        }
+    }();
+
+    var origin = function () {
+        // 用于保存原始图像
+        var canvas = null;
+
+        // 将指定的初始化canvas元素保存以备用
+        function save(canvasElement) {
+            var temp = tool.canvasGenerator(canvasElement);
+            temp.copyFrom(canvasElement);
+            canvas = temp.canvas;
+        }
+
+        // 将已保存的初始图像恢复到指定的canvas中
+        function restore(canvasElement) {
+            var id = 'restoreOrigin';
+            if(share.getOperator() !== id) {
+                share.setCurrentCanvas(canvas);
+                share.setOperator(id);
+            }
+
+            var temp = tool.canvasHelper(share.getCurrentCanvas());
+            temp.applyTo(canvasElement);
+        }
+
+        return {
+            save   : save,
+            restore: restore
+        }
+    }();
 
     // 参考：http://blog.csdn.net/xdrt81y/article/details/8289963
     function RGB2Gray(sourceCanvas) {
@@ -329,56 +368,146 @@ var adjust = function () {
         var temp   = tool.canvasGenerator(sourceCanvas);
 
         for (var i = 0; i < temp.length; i += 4) {
-            temp.newData[i] = temp.newData[i + 1] = temp.newData[i + 2] = Math.round((source.data[i] * 299 + source.data[i + 1] * 587 + source.data[i + 2] * 114) / 1000);
-            temp.newData[i + 3] = source.data[i + 3];
+            temp.data[i] = temp.data[i + 1] = temp.data[i + 2] = Math.round((source.data[i] * 299 + source.data[i + 1] * 587 + source.data[i + 2] * 114) / 1000);
+            temp.data[i + 3] = source.data[i + 3];
         }
+
+        temp.save();
 
         return temp;
     }
 
+    // 从指定的canvas计算灰度平均值
+    function getGrayAverage(sourceCanvas) {
+        // 由彩色图像生成灰度图
+        var grayImg = RGB2Gray(sourceCanvas);
+        // 计算灰度图的灰度平均值
+        var sum = 0;
+        for (var i = 0, len = grayImg.data.length; i < len; i += 4) {
+            sum += grayImg.data[i];
+        }
+        return sum / (grayImg.data.length / 4);
+    }
+
     // 反色处理
-    // 如果指定了targetCanvas，会将反色后的图像绘制于其上
-    // 如果未指定targetCanvas，则会返回反色后的ImageData对象
-    function colorInverse(sourceCanvas, targetCanvas) {
-        var source    = tool.canvasHelper(sourceCanvas);
-        var temp      = tool.canvasGenerator(sourceCanvas);
-        var targetCtx = targetCanvas.getContext('2d');
+    function colorInverse(targetCanvas) {
+        var id = 'colorInverse';
+        if(share.getOperator() !== id) {
+            share.setCurrentCanvas(targetCanvas);
+            share.setOperator(id);
+        }
 
-        for (var i = 0; i < temp.length; i += 4) {
+        historyRecord.add('反色', mainCanvas);
+        historyRecord.render();
+
+        var source = tool.canvasHelper(share.getCurrentCanvas());
+
+        source.creat();
+
+        for (var i = 0; i < source.length; i += 4) {
             for (var j = 0; j < 3; j++) {
-                temp.newData[i + j] = 255 - source.data[i + j];
+                source.newImageData.data[i + j] = 255 - source.data[i + j];
             }
-            temp.newData[i + 3] = source.data[i + 3];
+            source.newImageData.data[i + 3] = source.data[i + 3];
         }
 
-        if (targetCanvas) {
-            targetCtx.putImageData(temp.newImageData, 0, 0);
+        source.applyTo(targetCanvas);
+    }
+
+    function brightAndContrast(sourceCanvas, bright, contrast) {
+
+    }
+
+    // 亮度调节 level：-100 ~ 100
+    function bright(targetCanvas, level) {
+        // 运行时先检查上一个图像处理操作是不是本函数发出
+        // 是，则继续运行
+        // 若不是，则更新current，而后继续运行
+        var id = 'bright';
+        if(share.getOperator() !== id) {
+            share.setCurrentCanvas(targetCanvas);
+            share.setOperator(id);
         }
-        else {
-            return temp.newImageData;
+        historyRecord.add('调节亮度', mainCanvas);
+        historyRecord.render();
+
+        var source      = tool.canvasHelper(share.getCurrentCanvas());
+        var grayAverage = getGrayAverage(RGB2Gray(source.canvas).canvas);
+        var delta       = level * 0.9;
+
+        source.creat();
+
+        for (var i = 0; i < source.length; i += 4) {
+            for (var j = 0; j < 3; j++) {
+                source.newImageData.data[i + j] = source.data[i + j] + delta;
+                // 验证值是否越界
+                source.newImageData.data[i + j] = source.newImageData.data[i + j] > 255 ? 255 : source.newImageData.data[i + j] < 0 ? 0 : source.newImageData.data[i + j];
+            }
+            source.newImageData.data[i + 3] = source.data[i + 3];
         }
+
+        source.applyTo(targetCanvas);
     }
 
     return {
+        origin      : origin,
         RGB2Gray    : RGB2Gray,
-        colorInverse: colorInverse
+        colorInverse: colorInverse,
+        bright      : bright
     }
 }();
 
+/******************************
+ *           主逻辑
+ * *****************************/
+var container       = document.querySelector('.container'),
+    mainCanvas      = container.querySelector('#main_canvas'),
+    histogramCanvas = container.querySelector('#histogram_canvas'),
+    historyArea     = container.querySelector('.history-container'),
+    mainCtx         = mainCanvas.getContext('2d'),
+    pixels,
+    canvasWidth     = 800,
+    canvasHeight    = 449,
+    demoImg         = new Image();
+
+demoImg.src = './src/images/demo.jpg';
+
+demoImg.onload = function () {
+    mainCtx.drawImage(demoImg, 0, 0, canvasWidth, canvasHeight);
+    pixels = mainCtx.getImageData(0, 0, canvasWidth, canvasHeight);
+
+    // 设置历史纪录模块
+    // 保存原始图像 便于还原操作
+    historyRecord.setRenderElement(historyArea);
+    adjust.origin.save(mainCanvas);
+
+    // 设置直方图模块
+    // 绘制直方图
+    histogram.setRenderSource(mainCanvas);
+    histogram.setRenderTarget(histogramCanvas);
+    histogram.render();
+};
 
 /******************************
  *          事件绑定
  * *****************************/
-var toolArea = container.querySelector('.tool');
-toolArea.addEventListener('click', function (event) {
-    if (event.target.className.indexOf('restore') > -1) {
-        historyRecord.restoreOrigin(mainCanvas);
-        historyRecord.add('撤销所有修改', mainCanvas);
-        historyRecord.render();
-    }
-    if (event.target.className.indexOf('color-inverse') > -1) {
-        historyRecord.add('反色', mainCanvas);
-        historyRecord.render();
-        adjust.colorInverse(mainCanvas, mainCanvas);
-    }
-});
+window.onload = function () {
+    var toolArea = container.querySelector('.tool');
+    toolArea.addEventListener('click', function (event) {
+        if (event.target.className.indexOf('restore') > -1) {
+            adjust.origin.restore(mainCanvas);
+            historyRecord.add('撤销所有修改', mainCanvas);
+            historyRecord.render();
+
+
+        }
+        if (event.target.className.indexOf('color-inverse') > -1) {
+            adjust.colorInverse(mainCanvas);
+        }
+    });
+
+    var brightArea = container.querySelector('.bright');
+    brightArea.addEventListener('change', function () {
+        adjust.bright(mainCanvas, event.target.value);
+    });
+};
