@@ -223,6 +223,9 @@ var histogram = function () {
     }
 
     function render() {
+        // 清空canvas
+        renderTarget.width = renderTarget.width;
+
         targetCtx     = renderTarget.getContext('2d');
         sourceCtx     = renderSource.getContext('2d');
         sourceImgData = sourceCtx.getImageData(0, 0, renderSource.width, renderSource.height);
@@ -254,15 +257,22 @@ var histogram = function () {
             count.bMax = count.bMax < count.blue[j] ? count.blue[j] : count.bMax;
         }
 
+        //        // 避免最大值超限
+        //        for (var n = 0; n < 256; n++) {
+        //            count.rMax = count.rMax < 100 ? count.rMax : 100;
+        //            count.gMax = count.gMax < 100 ? count.gMax : 100;
+        //            count.bMax = count.bMax < 100 ? count.bMax : 100;
+        //        }
+
         count.max = count.rMax > count.max ? count.rMax : count.max;
         count.max = count.gMax > count.max ? count.gMax : count.max;
         count.max = count.bMax > count.max ? count.bMax : count.max;
 
         // 归一化
         for (var m = 0; m < 256; m++) {
-            count.red[m] /= count.rMax / (100 * 0.9);
-            count.green[m] /= count.gMax / (100 * 0.9);
-            count.blue[m] /= count.bMax / (100 * 0.9);
+            count.red[m] /= count.rMax / 100;
+            count.green[m] /= count.gMax / 100;
+            count.blue[m] /= count.bMax / 100;
         }
 
         // 绘制直方图
@@ -498,12 +508,56 @@ var adjust = function () {
         source.applyTo(targetCanvas);
     }
 
+    // 色彩平衡
+    // RGB的不同相加组合可以产生CMYK中的任意一种，而相应CMYK空间中各种色彩的缺失组合也可以产生RGB色彩空间中任意一种颜色。
+    // r g b : -100 ~ 100
+    function colorBalance(targetCanvas, r, g, b) {
+        var id = 'colorBalance';
+
+        if (share.getOperator() !== id) {
+            share.setCurrentCanvas(targetCanvas);
+            share.setOperator(id);
+        }
+
+        historyRecord.add('调节色彩平衡', mainCanvas);
+        historyRecord.render();
+
+        var source = tool.canvasHelper(share.getCurrentCanvas());
+
+        var rValues = new Array(256);
+        var gValues = new Array(256);
+        var bValues = new Array(256);
+
+        for (var k = 0, len = 256; k < len; k++) {
+            rValues[k] = k + r * 0.9;
+            gValues[k] = k + g * 0.9;
+            bValues[k] = k + b * 0.9;
+
+            // 避免越界
+            rValues[k] = rValues[k] > 255 ? 255 : rValues[k];
+            gValues[k] = rValues[k] > 255 ? 255 : gValues[k];
+            bValues[k] = rValues[k] > 255 ? 255 : bValues[k];
+        }
+
+        source.creat();
+
+        for (var i = 0; i < source.length; i += 4) {
+            source.newImageData.data[i]     = rValues[source.data[i]];
+            source.newImageData.data[i + 1] = gValues[source.data[i + 1]];
+            source.newImageData.data[i + 2] = bValues[source.data[i + 2]];
+            source.newImageData.data[i + 3] = source.data[i + 3];
+        }
+
+        source.applyTo(targetCanvas);
+    }
+
     return {
         origin      : origin,
         RGB2Gray    : RGB2Gray,
         colorInverse: colorInverse,
         bright      : bright,
-        contrast    : contrast
+        contrast    : contrast,
+        colorBalance: colorBalance
     }
 }();
 
@@ -546,21 +600,46 @@ window.onload = function () {
     toolArea.addEventListener('click', function (event) {
         if (event.target.className.indexOf('restore') > -1) {
             adjust.origin.restore(mainCanvas);
-            brightArea.value   = 0;
-            contrastArea.value = 0;
+            brightArea.value    = 0;
+            contrastArea.value  = 0;
+            colorBalanceR.value = 0;
+            colorBalanceG.value = 0;
+            colorBalanceB.value = 0;
+            histogram.render();
         }
         if (event.target.className.indexOf('color-inverse') > -1) {
             adjust.colorInverse(mainCanvas);
+            histogram.render();
         }
     });
 
     var brightArea = container.querySelector('.bright');
     brightArea.addEventListener('change', function (event) {
         adjust.bright(mainCanvas, event.target.value);
+        histogram.render();
     });
 
     var contrastArea = container.querySelector('.contrast');
     contrastArea.addEventListener('change', function (event) {
         adjust.contrast(mainCanvas, event.target.value);
-    })
+        histogram.render();
+    });
+
+    var colorBalanceR = container.querySelector('.color-balance-r');
+    colorBalanceR.addEventListener('change', function (event) {
+        adjust.colorBalance(mainCanvas, event.target.value, 0, 0);
+        histogram.render();
+    });
+
+    var colorBalanceG = container.querySelector('.color-balance-g');
+    colorBalanceG.addEventListener('change', function (event) {
+        adjust.colorBalance(mainCanvas, 0, event.target.value, 0);
+        histogram.render();
+    });
+
+    var colorBalanceB = container.querySelector('.color-balance-b');
+    colorBalanceB.addEventListener('change', function (event) {
+        adjust.colorBalance(mainCanvas, 0, 0, event.target.value);
+        histogram.render();
+    });
 };
