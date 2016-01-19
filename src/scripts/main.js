@@ -440,7 +440,11 @@ var adjust = function () {
 
         var values = new Array(256);
         for (var k = 0, len = values.length; k < len; k++) {
-            values[k] = k + (k - grayAverage) * (1 / (1 - (level / 100)) - 1);
+            if (level > 0) {
+                values[k] = k + (k - grayAverage) * (1 / (1 - (level / 100)) - 1);
+            } else {
+                values[k] = k + (k - grayAverage) * level / 100;
+            }
         }
 
         source.creat();
