@@ -1,4 +1,7 @@
 # 开坑！写一个简易版PS
+
+在线演示：[newraina.github.io/imageBrush](http://newraina.github.io/imageBrush/)
+
 支持的特性：
 
 1. **历史记录部分**
