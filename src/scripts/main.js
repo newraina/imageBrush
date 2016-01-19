@@ -392,6 +392,68 @@ var adjust = function () {
         return temp;
     }
 
+    // http://poster469.blog.163.com/blog/static/13191134201443743082/
+    function RGB2HSL(color) {
+        var r = color[0] / 255;
+        var g = color[1] / 255;
+        var b = color[2] / 255;
+
+        var max = Math.max(r, g, b), min = Math.min(r, g, b);
+        var h, s, l;
+
+        l = (max + min) / 2;
+
+        if (max == min) {
+            h = s = 0;
+        } else {
+            var d = max - min;
+            s     = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r:
+                    h = (g - b) / d + (g < b ? 6 : 0);
+                    break;
+                case g:
+                    h = (b - r) / d + 2;
+                    break;
+                case b:
+                    h = (r - g) / d + 4;
+                    break;
+            }
+            h /= 6;
+        }
+
+        return [h, s, l];
+    }
+
+    // http://poster469.blog.163.com/blog/static/13191134201443743082/
+    function HSL2RGB(color) {
+        var h = color[0];
+        var s = color[1];
+        var l = color[2];
+        var r, g, b;
+
+        function hue2rgb(p, q, t) {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1 / 6) return p + (q - p) * 6 * t;
+            if (t < 1 / 2) return q;
+            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+            return p;
+        }
+
+        if (s == 0) {
+            r = g = b = l;
+        } else {
+            var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            var p = 2 * l - q;
+            r     = hue2rgb(p, q, h + 1 / 3);
+            g     = hue2rgb(p, q, h);
+            b     = hue2rgb(p, q, h - 1 / 3);
+        }
+
+        return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    }
+
     // 从指定的canvas计算灰度平均值
     function getGrayAverage(sourceCanvas) {
         // 由彩色图像生成灰度图
@@ -546,6 +608,16 @@ var adjust = function () {
             source.newImageData.data[i + 1] = gValues[source.data[i + 1]];
             source.newImageData.data[i + 2] = bValues[source.data[i + 2]];
             source.newImageData.data[i + 3] = source.data[i + 3];
+
+            // 保持明度
+            var oldColor = RGB2HSL([source.data[i], source.data[i + 1], source.data[i + 2]]);
+            var color    = RGB2HSL([source.newImageData.data[i], source.newImageData.data[i + 1], source.newImageData.data[i + 2]]);
+            color[2]     = oldColor[2];
+            var newColor = HSL2RGB(color);
+
+            source.newImageData.data[i]     = newColor[0];
+            source.newImageData.data[i + 1] = newColor[1];
+            source.newImageData.data[i + 2] = newColor[2];
         }
 
         source.applyTo(targetCanvas);
