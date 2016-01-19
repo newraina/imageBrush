@@ -17,13 +17,32 @@
         <h3>工具栏</h3>
         <canvas id="histogram_canvas" width="256" height="100"></canvas>
         <div class="tool">
-            <button class="restore pure-button">恢复原图</button>
-            <button class="color-inverse pure-button">反色</button>
-            <input type="range" class="bright" min="-100" max="100" value="0">
-            <input type="range" class="contrast" min="-100" max="100" value="0">
-            <input type="range" class="color-balance-r" min="-100" max="100" value="0">
-            <input type="range" class="color-balance-g" min="-100" max="100" value="0">
-            <input type="range" class="color-balance-b" min="-100" max="100" value="0">
+            <div class="click-input">
+                <button class="restore pure-button">恢复原图</button>
+                <button class="color-inverse pure-button">反色</button>
+            </div>
+            <div class="range-input">
+                <div class="range-input-item">
+                    <label for="bright">亮度</label>
+                    <input type="range" class="bright" id="bright" min="-100" max="100" value="0">
+                </div>
+                <div class="range-input-item">
+                    <label for="contrast">对比度</label>
+                    <input type="range" class="contrast" id="contrast" min="-100" max="100" value="0">
+                </div>
+                <div class="range-input-item">
+                    <label for="color_balance_r">色相：红</label>
+                    <input type="range" class="color-balance-r" id="color_balance_r" min="-100" max="100" value="0">
+                </div>
+                <div class="range-input-item">
+                    <label for="color_balance_g">色相：绿</label>
+                    <input type="range" class="color-balance-g" id="color_balance_g" min="-100" max="100" value="0">
+                </div>
+                <div class="range-input-item">
+                    <label for="color_balance_b">色相：蓝</label>
+                    <input type="range" class="color-balance-b" id="color_balance_b" min="-100" max="100" value="0">
+                </div>
+            </div>
         </div>
     </section>
     <section class="history-container panel">

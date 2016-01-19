@@ -66,7 +66,7 @@ header {
 }
 
 .history-container ul {
-    padding:0;
+    padding: 0;
 }
 
 .history-list {
@@ -74,8 +74,8 @@ header {
     position: relative;
     cursor: pointer;
     background: rgba(27, 30, 33, .7);
-    padding-left:5px;
-    margin:5px 0;
+    padding-left: 5px;
+    margin: 5px 0;
 }
 
 .history-time {
@@ -92,4 +92,26 @@ header {
     border-width: 0 0 1px 0;
     border-radius: 6px;
     background: rgba(27, 30, 33, .5);
+}
+
+.click-input {
+    text-align: center;
+}
+
+.range-input {
+    margin-top: 20px;
+    width:100%;
+}
+
+.range-input-item {
+    position: relative;
+}
+
+.range-input-item label {
+    position: absolute;
+    right: 190px;
+}
+
+.range-input-item input {
+    margin-left: 80px;
 }
