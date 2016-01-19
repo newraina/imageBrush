@@ -59,7 +59,7 @@ var tool = function () {
         var length    = data.length;
 
         // 是否创建了新ImageData对象的标志变量
-        var created  =false;
+        var created = false;
 
         var tempHelper = {
             canvas   : sourceCanvas,
@@ -347,7 +347,7 @@ var adjust = function () {
         // 将已保存的初始图像恢复到指定的canvas中
         function restore(canvasElement) {
             var id = 'restoreOrigin';
-            if(share.getOperator() !== id) {
+            if (share.getOperator() !== id) {
                 share.setCurrentCanvas(canvas);
                 share.setOperator(id);
             }
@@ -397,10 +397,9 @@ var adjust = function () {
     // 反色处理
     function colorInverse(targetCanvas) {
         var id = 'colorInverse';
-        if(share.getOperator() !== id) {
-            share.setCurrentCanvas(targetCanvas);
-            share.setOperator(id);
-        }
+
+        share.setCurrentCanvas(targetCanvas);
+        share.setOperator(id);
 
         historyRecord.add('反色', mainCanvas);
         historyRecord.render();
@@ -423,28 +422,69 @@ var adjust = function () {
 
     }
 
+    // 对比度调节 level：-100 ~ 100
+    function contrast(targetCanvas, level) {
+        var id = 'contrast';
+
+        if (share.getOperator() !== id) {
+            share.setCurrentCanvas(targetCanvas);
+            share.setOperator(id);
+        }
+
+        historyRecord.add('调节对比度', mainCanvas);
+        historyRecord.render();
+
+        var source = tool.canvasHelper(share.getCurrentCanvas());
+        // 为保证调整后平均亮度不变，引入灰度平均值
+        var grayAverage = getGrayAverage(RGB2Gray(source.canvas).canvas);
+
+        var values = new Array(256);
+        for (var k = 0, len = values.length; k < len; k++) {
+            values[k] = k + (k - grayAverage) * (1 / (1 - (level / 100)) - 1);
+        }
+
+        source.creat();
+
+        for (var i = 0; i < source.length; i += 4) {
+            for (var j = 0; j < 3; j++) {
+                source.newImageData.data[i + j] = values[source.data[i + j]];
+                // 验证值是否越界
+                source.newImageData.data[i + j] = source.newImageData.data[i + j] > 255 ? 255 : source.newImageData.data[i + j] < 0 ? 0 : source.newImageData.data[i + j];
+            }
+            source.newImageData.data[i + 3] = source.data[i + 3];
+        }
+
+        source.applyTo(targetCanvas);
+
+
+    }
+
     // 亮度调节 level：-100 ~ 100
     function bright(targetCanvas, level) {
         // 运行时先检查上一个图像处理操作是不是本函数发出
         // 是，则继续运行
         // 若不是，则更新current，而后继续运行
         var id = 'bright';
-        if(share.getOperator() !== id) {
+        if (share.getOperator() !== id) {
             share.setCurrentCanvas(targetCanvas);
             share.setOperator(id);
         }
         historyRecord.add('调节亮度', mainCanvas);
         historyRecord.render();
 
-        var source      = tool.canvasHelper(share.getCurrentCanvas());
-        var grayAverage = getGrayAverage(RGB2Gray(source.canvas).canvas);
-        var delta       = level * 0.9;
+        var source = tool.canvasHelper(share.getCurrentCanvas());
+        var delta  = level * 0.9;
+
+        var values = new Array(256);
+        for (var k = 0, len = values.length; k < len; k++) {
+            values[k] = k + delta;
+        }
 
         source.creat();
 
         for (var i = 0; i < source.length; i += 4) {
             for (var j = 0; j < 3; j++) {
-                source.newImageData.data[i + j] = source.data[i + j] + delta;
+                source.newImageData.data[i + j] = values[source.data[i + j]];
                 // 验证值是否越界
                 source.newImageData.data[i + j] = source.newImageData.data[i + j] > 255 ? 255 : source.newImageData.data[i + j] < 0 ? 0 : source.newImageData.data[i + j];
             }
@@ -458,7 +498,8 @@ var adjust = function () {
         origin      : origin,
         RGB2Gray    : RGB2Gray,
         colorInverse: colorInverse,
-        bright      : bright
+        bright      : bright,
+        contrast    : contrast
     }
 }();
 
@@ -501,8 +542,8 @@ window.onload = function () {
     toolArea.addEventListener('click', function (event) {
         if (event.target.className.indexOf('restore') > -1) {
             adjust.origin.restore(mainCanvas);
-
-
+            brightArea.value   = 0;
+            contrastArea.value = 0;
         }
         if (event.target.className.indexOf('color-inverse') > -1) {
             adjust.colorInverse(mainCanvas);
@@ -510,7 +551,12 @@ window.onload = function () {
     });
 
     var brightArea = container.querySelector('.bright');
-    brightArea.addEventListener('change', function () {
+    brightArea.addEventListener('change', function (event) {
         adjust.bright(mainCanvas, event.target.value);
     });
+
+    var contrastArea = container.querySelector('.contrast');
+    contrastArea.addEventListener('change', function (event) {
+        adjust.contrast(mainCanvas, event.target.value);
+    })
 };
