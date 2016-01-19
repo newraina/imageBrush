@@ -113,7 +113,7 @@ var historyRecord = function () {
     // 添加历史纪录函数
     function add(title, canvasElement) {
         var temp = tool.canvasGenerator(canvasElement);
-        temp.ctx.drawImage(canvasElement, 0, 0);
+        temp.ctx.drawImage(canvasElement, 0, 0, canvasElement.width, canvasElement.height);
 
         var tempRecord = {
             title : title,
@@ -154,7 +154,7 @@ var historyRecord = function () {
         if (!(renderContainer || records)) return false;
         var content = '<ul class="history">';
         for (var i = 0; i < records.length; i++) {
-            content += '<li class="history-list">'
+            content += '<li class="history-list" data-history-num="' + i + '">'
                 + records[i].title
                 + '<span class="history-time">'
                 + records[i].date.getHours()
@@ -473,9 +473,6 @@ var adjust = function () {
         share.setCurrentCanvas(targetCanvas);
         share.setOperator(id);
 
-        historyRecord.add('反色', mainCanvas);
-        historyRecord.render();
-
         var source = tool.canvasHelper(share.getCurrentCanvas());
 
         source.creat();
@@ -488,6 +485,9 @@ var adjust = function () {
         }
 
         source.applyTo(targetCanvas);
+
+        historyRecord.add('反色', mainCanvas);
+        historyRecord.render();
     }
 
     function brightAndContrast(sourceCanvas, bright, contrast) {
@@ -502,9 +502,6 @@ var adjust = function () {
             share.setCurrentCanvas(targetCanvas);
             share.setOperator(id);
         }
-
-        historyRecord.add('调节对比度', mainCanvas);
-        historyRecord.render();
 
         var source = tool.canvasHelper(share.getCurrentCanvas());
         // 为保证调整后平均亮度不变，引入灰度平均值
@@ -532,7 +529,8 @@ var adjust = function () {
 
         source.applyTo(targetCanvas);
 
-
+        historyRecord.add('调节对比度', mainCanvas);
+        historyRecord.render();
     }
 
     // 亮度调节 level：-100 ~ 100
@@ -545,8 +543,6 @@ var adjust = function () {
             share.setCurrentCanvas(targetCanvas);
             share.setOperator(id);
         }
-        historyRecord.add('调节亮度', mainCanvas);
-        historyRecord.render();
 
         var source = tool.canvasHelper(share.getCurrentCanvas());
         var delta  = level * 0.9;
@@ -568,6 +564,9 @@ var adjust = function () {
         }
 
         source.applyTo(targetCanvas);
+
+        historyRecord.add('调节亮度', mainCanvas);
+        historyRecord.render();
     }
 
     // 色彩平衡
@@ -580,9 +579,6 @@ var adjust = function () {
             share.setCurrentCanvas(targetCanvas);
             share.setOperator(id);
         }
-
-        historyRecord.add('调节色彩平衡', mainCanvas);
-        historyRecord.render();
 
         var source = tool.canvasHelper(share.getCurrentCanvas());
 
@@ -621,6 +617,9 @@ var adjust = function () {
         }
 
         source.applyTo(targetCanvas);
+
+        historyRecord.add('调节色彩平衡', mainCanvas);
+        historyRecord.render();
     }
 
     return {
@@ -682,6 +681,15 @@ window.onload = function () {
         if (event.target.className.indexOf('color-inverse') > -1) {
             adjust.colorInverse(mainCanvas);
             histogram.render();
+        }
+    });
+
+    var historyArea = container.querySelector('.history-container');
+    historyArea.addEventListener('click', function (event) {
+        if (event.target.className.indexOf('history-list') > -1) {
+            var historyNum    = parseInt(event.target.attributes['data-history-num'].value);
+            var history = tool.canvasHelper(historyRecord.getRecord(historyNum).canvas);
+            history.applyTo(mainCanvas);
         }
     });
 
